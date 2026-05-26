@@ -54,5 +54,14 @@ Required repository secrets:
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
 
-Use a Cloudflare API token scoped to the deployment account. The token must be
-able to deploy Workers and apply D1 migrations.
+Use a Cloudflare API token scoped to the deployment account only.
+
+Minimum token permissions:
+
+- `Account` -> `Workers Scripts` -> `Edit`
+- `Account` -> `D1` -> `Edit`
+
+Do not grant `User` membership, zone, DNS, Pages, KV, R2, or queue permissions
+for this workflow. If `CLOUDFLARE_ACCOUNT_ID` is missing, Wrangler may try to
+discover accounts through Cloudflare membership APIs; the workflow checks for
+the secret before running Wrangler to keep the token scope minimal.

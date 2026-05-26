@@ -76,6 +76,14 @@ Required GitHub Actions secrets:
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
 
+Minimum Cloudflare API token permissions:
+
+- `Account` -> `Workers Scripts` -> `Edit`
+- `Account` -> `D1` -> `Edit`
+
+Scope the token to the deployment account only. Do not grant `User`
+membership, zone, DNS, Pages, KV, R2, or queue permissions for this workflow.
+
 The workflow installs the mise-managed toolchain, runs `npm ci`, typechecks,
 runs tests, applies remote D1 migrations through the `DB` binding, and then
 deploys the Worker.
