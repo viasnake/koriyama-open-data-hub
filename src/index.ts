@@ -23,8 +23,22 @@ app.use(
 
 app.options("*", () => new Response(null, { headers: CORS_HEADERS }));
 
-app.get("/", (c) =>
-  c.redirect("https://github.com/viasnake/koriyama-open-data-hub", 302),
+app.get("/", () =>
+  jsonResponse({
+    name: "Koriyama Open Data Hub",
+    description:
+      "Unofficial API for Koriyama City open data, RSS entries, places, and GeoJSON.",
+    api_base_path: "/api/v2",
+    endpoints: [
+      "/api/v2/health",
+      "/api/v2/datasets",
+      "/api/v2/places",
+      "/api/v2/places.geojson",
+      "/api/v2/search?q=",
+      "/api/v2/changes",
+      "/api/v2/rss/entries",
+    ],
+  }),
 );
 
 const api = new Hono<{ Bindings: Bindings }>();

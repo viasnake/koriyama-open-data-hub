@@ -1,6 +1,7 @@
 # API
 
-All public endpoints are read-only and versioned under `/api/v2`.
+All public endpoints are read-only. API resources are versioned under
+`/api/v2`; `GET /` returns service information and links to the versioned API.
 
 Every JSON endpoint returns:
 
@@ -21,6 +22,7 @@ Every JSON endpoint returns:
 
 ## Endpoints
 
+- `GET /`
 - `GET /api/v2/health`
 - `GET /api/v2/datasets`
 - `GET /api/v2/datasets/{dataset_id}`
