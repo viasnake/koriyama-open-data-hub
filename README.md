@@ -25,6 +25,7 @@ The public API is versioned under `/api/v2`.
 
 Implemented routes:
 
+- `GET /`
 - `GET /api/v2/health`
 - `GET /api/v2/datasets`
 - `GET /api/v2/datasets/:dataset_id`
@@ -39,11 +40,15 @@ Implemented routes:
 ## Development
 
 ```sh
+mise install
 npm install
 npm test
 npm run typecheck
 npm run dev
 ```
+
+`wrangler` is managed by mise. Prefer `wrangler ...` through the mise-managed
+toolchain instead of `npx wrangler ...`.
 
 ## D1
 
@@ -51,14 +56,34 @@ npm run dev
 npm run db:migrate:local
 ```
 
-`wrangler.toml` contains a placeholder D1 database id. Replace it after creating
-the production database.
+Production D1 database:
+
+- database name: `koriyama-open-data-hub-prod`
+- binding: `DB`
+
+Apply production migrations with:
+
+```sh
+npm run db:migrate
+```
+
+## Deployment
+
+Deployments are handled by GitHub Actions on pushes to `main`.
+
+Required GitHub Actions secrets:
+
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN`
+
+The workflow installs the mise-managed toolchain, runs `npm ci`, typechecks,
+runs tests, applies remote D1 migrations through the `DB` binding, and then
+deploys the Worker.
 
 ## Source And Attribution
 
 See:
 
-- [docs/goal.md](docs/goal.md)
 - [docs/attribution.md](docs/attribution.md)
 - [docs/datasets.md](docs/datasets.md)
 - [docs/operations.md](docs/operations.md)
