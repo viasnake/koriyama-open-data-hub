@@ -7,13 +7,16 @@ Cloudflare Cron Triggers run in UTC.
 ```toml
 [triggers]
 crons = [
-  "0 18 * * *",
   "0 * * * *"
 ]
 ```
 
-- `0 18 * * *`: JST 03:00 open data ingestion
-- `0 * * * *`: hourly RSS ingestion
+- `0 * * * *`: hourly scheduled job
+
+The scheduled handler always ingests RSS. It also ingests open data once per
+day when the scheduled UTC hour is `18` (JST 03:00). Keep the trigger hourly so
+RSS stays fresh; change the open data hour in `src/index.ts` if the daily
+ingestion time must move.
 
 ## Fetch Policy
 

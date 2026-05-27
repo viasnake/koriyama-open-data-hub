@@ -7,7 +7,6 @@ enabled = true
 
 [triggers]
 crons = [
-  "0 18 * * *",
   "0 * * * *"
 ]
 

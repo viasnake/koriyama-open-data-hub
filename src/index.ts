@@ -11,6 +11,8 @@ import { ingestOpenData } from "./jobs/ingest";
 import { ingestRss } from "./jobs/rss";
 import type { Bindings } from "./types";
 
+const OPEN_DATA_INGEST_UTC_HOUR = 18;
+
 export const app = new Hono<{ Bindings: Bindings }>();
 
 app.use(
@@ -53,14 +55,35 @@ app.route("/api/v2", api);
 
 app.notFound(() => jsonResponse({ error: "not_found" }, { status: 404 }));
 
+export function shouldIngestOpenData(scheduledAt: Date): boolean {
+  return scheduledAt.getUTCHours() === OPEN_DATA_INGEST_UTC_HOUR;
+}
+
+async function runScheduledJobs(event: ScheduledEvent, env: Bindings): Promise<void> {
+  const failures: unknown[] = [];
+
+  try {
+    await ingestRss(env.DB);
+  } catch (error) {
+    failures.push(error);
+  }
+
+  if (shouldIngestOpenData(new Date(event.scheduledTime))) {
+    try {
+      await ingestOpenData(env.DB);
+    } catch (error) {
+      failures.push(error);
+    }
+  }
+
+  if (failures.length > 0) {
+    throw failures[0];
+  }
+}
+
 export default {
   fetch: app.fetch,
   async scheduled(event: ScheduledEvent, env: Bindings, ctx: ExecutionContext): Promise<void> {
-    if (event.cron === "0 18 * * *") {
-      ctx.waitUntil(ingestOpenData(env.DB));
-      return;
-    }
-
-    ctx.waitUntil(ingestRss(env.DB));
+    ctx.waitUntil(runScheduledJobs(event, env));
   },
 };

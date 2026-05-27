@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { app } from "./index";
+import { app, shouldIngestOpenData } from "./index";
 
 type RootResponse = {
   data: {
@@ -23,5 +23,12 @@ describe("root route", () => {
     });
     expect(body.data.repository_url).toBeUndefined();
     expect(body.data.endpoints).toContain("/api/v2/health");
+  });
+});
+
+describe("scheduled jobs", () => {
+  it("runs open data ingestion at the configured UTC hour", () => {
+    expect(shouldIngestOpenData(new Date("2026-05-27T18:00:00.000Z"))).toBe(true);
+    expect(shouldIngestOpenData(new Date("2026-05-27T17:00:00.000Z"))).toBe(false);
   });
 });
