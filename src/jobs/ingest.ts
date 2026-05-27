@@ -47,6 +47,8 @@ export async function ingestOpenData(db: D1Database): Promise<void> {
         }
       }
 
+      await insertRawRecordChanges(db, rawRecords, now);
+      await insertPlaceChanges(db, places, now);
       await upsertRawRecords(db, rawRecords);
       await upsertPlaces(db, places);
 
@@ -210,6 +212,35 @@ async function upsertRawRecords(db: D1Database, records: RawRecord[]): Promise<v
   }
 }
 
+async function insertRawRecordChanges(db: D1Database, records: RawRecord[], changedAt: string): Promise<void> {
+  for (const chunk of chunks(records, 100)) {
+    const existingRecords = await selectExistingRawRecords(db, chunk.map((record) => record.id));
+    const changes = chunk.flatMap((record) => {
+      const before = existingRecords.get(record.id);
+      if (before?.source_row_hash === record.source_row_hash) return [];
+
+      return [
+        {
+          datasetId: record.dataset_id,
+          recordId: record.id,
+          changeType: before ? "raw_updated" : "raw_created",
+          beforeJson: before?.raw_json ?? null,
+          afterJson: record.raw_json,
+        },
+      ];
+    });
+
+    await insertRecordChanges(db, changes, changedAt);
+  }
+}
+
+async function selectExistingRawRecords(db: D1Database, ids: string[]): Promise<Map<string, RawRecord>> {
+  if (ids.length === 0) return new Map();
+  const placeholders = ids.map(() => "?").join(",");
+  const result = await db.prepare(`select * from raw_records where id in (${placeholders})`).bind(...ids).all<RawRecord>();
+  return new Map(result.results.map((record) => [record.id, record]));
+}
+
 async function upsertPlaces(db: D1Database, places: Place[]): Promise<void> {
   const statement = db.prepare(
     `insert into places (
@@ -277,6 +308,65 @@ async function upsertPlaces(db: D1Database, places: Place[]): Promise<void> {
       ),
     );
   }
+}
+
+async function insertPlaceChanges(db: D1Database, places: Place[], changedAt: string): Promise<void> {
+  for (const chunk of chunks(places, 100)) {
+    const existingPlaces = await selectExistingPlaces(db, chunk.map((place) => place.id));
+    const changes = chunk.flatMap((place) => {
+      const before = existingPlaces.get(place.id);
+      if (before?.source_record_hash === place.source_record_hash) return [];
+
+      return [
+        {
+          datasetId: place.dataset_id,
+          recordId: place.id,
+          changeType: before ? "place_updated" : "place_created",
+          beforeJson: before ? JSON.stringify(before) : null,
+          afterJson: JSON.stringify(place),
+        },
+      ];
+    });
+
+    await insertRecordChanges(db, changes, changedAt);
+  }
+}
+
+async function selectExistingPlaces(db: D1Database, ids: string[]): Promise<Map<string, Place>> {
+  if (ids.length === 0) return new Map();
+  const placeholders = ids.map(() => "?").join(",");
+  const result = await db.prepare(`select * from places where id in (${placeholders})`).bind(...ids).all<Place>();
+  return new Map(result.results.map((place) => [place.id, place]));
+}
+
+async function insertRecordChanges(
+  db: D1Database,
+  changes: Array<{
+    datasetId: string;
+    recordId: string;
+    changeType: string;
+    beforeJson: string | null;
+    afterJson: string;
+  }>,
+  changedAt: string,
+): Promise<void> {
+  if (changes.length === 0) return;
+  const statement = db.prepare(
+    `insert into record_changes (
+      dataset_id,
+      record_id,
+      change_type,
+      changed_at,
+      before_json,
+      after_json
+    ) values (?, ?, ?, ?, ?, ?)`,
+  );
+
+  await db.batch(
+    changes.map((change) =>
+      statement.bind(change.datasetId, change.recordId, change.changeType, changedAt, change.beforeJson, change.afterJson),
+    ),
+  );
 }
 
 function chunks<T>(items: T[], size: number): T[][] {
