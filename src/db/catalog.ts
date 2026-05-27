@@ -83,6 +83,17 @@ const DATASET_SOURCE_PAGES: Record<string, string> = {
   shelters: KORIYAMA_DISASTER_OPEN_DATA_URL,
 };
 
+const DATASET_SOURCE_PAGE_LABELS: Record<string, string> = {
+  public_facilities: "公共施設等情報",
+  aed: "公共施設等情報",
+  public_wifi: "公共施設等情報",
+  public_toilets: "公共施設等情報",
+  childcare_facilities: "公共施設等情報",
+  medical_institutions: "公共施設等情報",
+  schools: "公共施設等情報",
+  shelters: "防災情報",
+};
+
 export const KORIYAMA_CATALOG_YAML = `version: 1
 source:
   id: koriyama_city
@@ -204,6 +215,7 @@ function enrichCatalog(input: DatasetCatalog): DatasetCatalog {
     ...input,
     datasets: input.datasets.map((dataset) => ({
       ...dataset,
+      source_page_label: DATASET_SOURCE_PAGE_LABELS[dataset.id],
       source_page_url: DATASET_SOURCE_PAGES[dataset.id],
       source_files: DATASET_SOURCE_FILES[dataset.id] ?? [],
     })),

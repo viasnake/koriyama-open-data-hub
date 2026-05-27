@@ -3,6 +3,7 @@ import { findDataset, listPublicDatasets } from "../db/catalog";
 import { getDataset, listDatasets, listRawRecords } from "../db/queries";
 import { jsonResponse } from "../constants";
 import type { Bindings, DatasetCatalogItem } from "../types";
+import { parsePagination } from "../utils/pagination";
 
 export const datasetRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -24,13 +25,20 @@ datasetRoutes.get("/:dataset_id", async (c) => {
 
 datasetRoutes.get("/:dataset_id/records", async (c) => {
   const datasetId = c.req.param("dataset_id");
+  const pagination = parsePagination(
+    {
+      limit: c.req.query("limit"),
+      offset: c.req.query("offset"),
+    },
+    1000,
+  );
   const dataset = (await getDataset(c.env.DB, datasetId)) ?? findDataset(datasetId);
 
   if (!dataset) {
     return jsonResponse({ error: "dataset_not_found" }, { status: 404 });
   }
 
-  return jsonResponse(await listRawRecords(c.env.DB, datasetId));
+  return jsonResponse(await listRawRecords(c.env.DB, datasetId, pagination.limit, pagination.offset), undefined, pagination);
 });
 
 function withCatalogMetadata(dataset: DatasetCatalogItem | undefined): DatasetCatalogItem | undefined {
@@ -40,6 +48,7 @@ function withCatalogMetadata(dataset: DatasetCatalogItem | undefined): DatasetCa
   return {
     ...dataset,
     source_page: catalogDataset.source_page,
+    source_page_label: catalogDataset.source_page_label,
     source_page_url: catalogDataset.source_page_url,
     source_files: catalogDataset.source_files,
     format: catalogDataset.format,

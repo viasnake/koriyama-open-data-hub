@@ -1,4 +1,4 @@
-import type { DatasetCatalogItem, Place, RawRecord, RssEntry } from "../types";
+import type { DatasetCatalogItem, FetchLog, Place, RawRecord, RssEntry } from "../types";
 
 type DatasetRow = Omit<DatasetCatalogItem, "enabled" | "public_api" | "source_type" | "format" | "normalize_as"> & {
   source_page: string;
@@ -105,10 +105,10 @@ export async function getDataset(db: D1Database, datasetId: string): Promise<Dat
   };
 }
 
-export async function listRawRecords(db: D1Database, datasetId: string): Promise<RawRecord[]> {
+export async function listRawRecords(db: D1Database, datasetId: string, limit = 1000, offset = 0): Promise<RawRecord[]> {
   const result = await db
-    .prepare("select * from raw_records where dataset_id = ? order by id limit 1000")
-    .bind(datasetId)
+    .prepare("select * from raw_records where dataset_id = ? order by id limit ? offset ?")
+    .bind(datasetId, limit, offset)
     .all<RawRecord>();
   return result.results;
 }
@@ -118,6 +118,8 @@ export type PlaceFilters = {
   category?: string;
   query?: string;
   bbox?: [number, number, number, number];
+  limit?: number;
+  offset?: number;
 };
 
 export async function listPlaces(db: D1Database, filters: PlaceFilters): Promise<Place[]> {
@@ -142,9 +144,12 @@ export async function listPlaces(db: D1Database, filters: PlaceFilters): Promise
     bindings.push(minLng, maxLng, minLat, maxLat);
   }
 
+  const limit = filters.limit ?? 1000;
+  const offset = filters.offset ?? 0;
+
   const result = await db
-    .prepare(`select * from places where ${clauses.join(" and ")} order by name limit 1000`)
-    .bind(...bindings)
+    .prepare(`select * from places where ${clauses.join(" and ")} order by name limit ? offset ?`)
+    .bind(...bindings, limit, offset)
     .all<Place>();
   return result.results;
 }
@@ -153,12 +158,46 @@ export async function getPlace(db: D1Database, placeId: string): Promise<Place |
   return db.prepare("select * from places where id = ? and deleted_at is null").bind(placeId).first<Place>();
 }
 
-export async function listRssEntries(db: D1Database, category?: string): Promise<RssEntry[]> {
-  const statement = category
-    ? db.prepare("select * from rss_entries where category = ? order by published_at desc limit 100")
-    : db.prepare("select * from rss_entries order by published_at desc limit 100");
-  const result = await (category ? statement.bind(category) : statement).all<RssEntry>();
+export type RssEntryFilters = {
+  category?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export async function listRssEntries(db: D1Database, filters: RssEntryFilters = {}): Promise<RssEntry[]> {
+  const limit = filters.limit ?? 100;
+  const offset = filters.offset ?? 0;
+  const statement = filters.category
+    ? db.prepare("select * from rss_entries where category = ? order by published_at desc limit ? offset ?")
+    : db.prepare("select * from rss_entries order by published_at desc limit ? offset ?");
+  const result = await (filters.category ? statement.bind(filters.category, limit, offset) : statement.bind(limit, offset)).all<RssEntry>();
   return result.results;
+}
+
+export async function listRecentFetchLogs(db: D1Database, sourceType: string, limit = 10): Promise<FetchLog[]> {
+  const result = await db
+    .prepare(
+      `select
+        id,
+        source_type,
+        source_id,
+        status,
+        fetched_at,
+        records_count,
+        error_message
+      from fetch_logs
+      where source_type = ?
+      order by fetched_at desc, id desc
+      limit ?`,
+    )
+    .bind(sourceType, limit)
+    .all<FetchLog>();
+  return result.results;
+}
+
+export async function countTable(db: D1Database, table: "raw_records" | "places" | "rss_entries" | "record_changes"): Promise<number> {
+  const row = await db.prepare(`select count(*) as count from ${table}`).first<{ count: number }>();
+  return row?.count ?? 0;
 }
 
 export async function insertFetchLog(

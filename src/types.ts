@@ -15,6 +15,7 @@ export type DatasetCatalogItem = {
   id: string;
   name: string;
   source_page: string;
+  source_page_label?: string;
   source_page_url?: string;
   source_files?: DatasetSourceFile[];
   source_type: "file";
@@ -52,6 +53,9 @@ export type ApiMeta = {
   attribution_required: true;
   unofficial: true;
   disclaimer: "This API is not affiliated with Koriyama City.";
+  result_count?: number;
+  limit?: number;
+  offset?: number;
 };
 
 export type ApiResponse<T> = {
@@ -103,4 +107,14 @@ export type RssEntry = {
 
 export type RssEntryResponse = RssEntry & {
   tags: string[];
+};
+
+export type FetchLog = {
+  id: number;
+  source_type: string;
+  source_id: string;
+  status: string;
+  fetched_at: string;
+  records_count: number | null;
+  error_message: string | null;
 };

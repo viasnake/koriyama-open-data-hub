@@ -38,7 +38,16 @@ Every JSON endpoint returns:
 
 `GET /api/v2/rss/entries` returns RSS entries with `tags` as a parsed string
 array. `tags_json` remains in the response for backward compatibility with
-existing clients.
+existing clients and should be treated as legacy.
+
+Array responses include `meta.result_count`. Paginated endpoints may also
+include `meta.limit` and `meta.offset`.
+
+List endpoints accept optional `limit` and `offset` query parameters. `limit`
+is capped at 1000.
+
+`GET /api/v2/health` includes record counts and recent fetch logs so an empty
+database is visible as a degraded state instead of appearing fully healthy.
 
 ## Places Filters
 

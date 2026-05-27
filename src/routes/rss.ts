@@ -4,14 +4,30 @@ import { zValidator } from "@hono/zod-validator";
 import { listRssEntries } from "../db/queries";
 import { jsonResponse } from "../constants";
 import type { Bindings, RssEntry, RssEntryResponse } from "../types";
+import { parsePagination } from "../utils/pagination";
 
 export const rssRoutes = new Hono<{ Bindings: Bindings }>();
 
-rssRoutes.get("/entries", zValidator("query", z.object({ category: z.string().optional() })), async (c) => {
-  const { category } = c.req.valid("query");
-  const entries = await listRssEntries(c.env.DB, category);
-  return jsonResponse(entries.map(toRssEntryResponse));
-});
+rssRoutes.get(
+  "/entries",
+  zValidator(
+    "query",
+    z.object({
+      category: z.string().optional(),
+      limit: z.string().optional(),
+      offset: z.string().optional(),
+    }),
+  ),
+  async (c) => {
+    const query = c.req.valid("query");
+    const pagination = parsePagination(query, 100);
+    const entries = await listRssEntries(c.env.DB, {
+      category: query.category,
+      ...pagination,
+    });
+    return jsonResponse(entries.map(toRssEntryResponse), undefined, pagination);
+  },
+);
 
 function toRssEntryResponse(entry: RssEntry): RssEntryResponse {
   return {

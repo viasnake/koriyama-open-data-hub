@@ -14,10 +14,20 @@ export function createMeta(now = new Date()): ApiMeta {
   };
 }
 
-export function jsonResponse<T>(data: T, init?: ResponseInit): Response {
+export type JsonResponseOptions = {
+  limit?: number;
+  offset?: number;
+};
+
+export function jsonResponse<T>(data: T, init?: ResponseInit, options: JsonResponseOptions = {}): Response {
   return Response.json(
     {
-      meta: createMeta(),
+      meta: {
+        ...createMeta(),
+        ...(Array.isArray(data) ? { result_count: data.length } : {}),
+        ...(options.limit == null ? {} : { limit: options.limit }),
+        ...(options.offset == null ? {} : { offset: options.offset }),
+      },
       data,
     },
     init,
