@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import { findDataset, listPublicDatasets } from "../db/catalog";
 import { getDataset, listDatasets, listRawRecords } from "../db/queries";
 import { jsonResponse } from "../constants";
-import type { Bindings, DatasetCatalogItem } from "../types";
+import type { Bindings, DatasetCatalogItem, RawRecord, RawRecordResponse } from "../types";
+import { parseJsonValue } from "../utils/json";
 import { parsePagination } from "../utils/pagination";
 
 export const datasetRoutes = new Hono<{ Bindings: Bindings }>();
@@ -38,8 +39,17 @@ datasetRoutes.get("/:dataset_id/records", async (c) => {
     return jsonResponse({ error: "dataset_not_found" }, { status: 404 });
   }
 
-  return jsonResponse(await listRawRecords(c.env.DB, datasetId, pagination.limit, pagination.offset), undefined, pagination);
+  const records = await listRawRecords(c.env.DB, datasetId, pagination.limit, pagination.offset);
+  return jsonResponse(records.map(toRawRecordResponse), undefined, pagination);
 });
+
+function toRawRecordResponse(record: RawRecord): RawRecordResponse {
+  const { raw_json, ...response } = record;
+  return {
+    ...response,
+    raw: parseJsonValue(raw_json, {}),
+  };
+}
 
 function withCatalogMetadata(dataset: DatasetCatalogItem | undefined): DatasetCatalogItem | undefined {
   if (!dataset) return dataset;

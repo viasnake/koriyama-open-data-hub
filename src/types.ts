@@ -84,6 +84,10 @@ export type Place = {
   deleted_at: string | null;
 };
 
+export type PlaceResponse = Omit<Place, "attributes_json"> & {
+  attributes: unknown;
+};
+
 export type RawRecord = {
   id: string;
   dataset_id: string;
@@ -91,6 +95,10 @@ export type RawRecord = {
   source_row_hash: string;
   raw_json: string;
   fetched_at: string;
+};
+
+export type RawRecordResponse = Omit<RawRecord, "raw_json"> & {
+  raw: unknown;
 };
 
 export type RssEntry = {
@@ -105,8 +113,23 @@ export type RssEntry = {
   source_hash: string;
 };
 
-export type RssEntryResponse = RssEntry & {
+export type RssEntryResponse = Omit<RssEntry, "tags_json"> & {
   tags: string[];
+};
+
+export type RecordChange = {
+  id: number;
+  dataset_id: string;
+  record_id: string;
+  change_type: string;
+  changed_at: string;
+  before_json: string | null;
+  after_json: string | null;
+};
+
+export type RecordChangeResponse = Omit<RecordChange, "before_json" | "after_json"> & {
+  before: unknown;
+  after: unknown;
 };
 
 export type FetchLog = {

@@ -4,7 +4,8 @@ import { zValidator } from "@hono/zod-validator";
 import { toFeatureCollection } from "../geojson/feature";
 import { getPlace, listPlaces } from "../db/queries";
 import { jsonResponse } from "../constants";
-import type { Bindings } from "../types";
+import type { Bindings, Place, PlaceResponse } from "../types";
+import { parseJsonValue } from "../utils/json";
 import { parsePagination } from "../utils/pagination";
 
 const placesQuerySchema = z.object({
@@ -28,7 +29,7 @@ placeRoutes.get("/", zValidator("query", placesQuerySchema), async (c) => {
     bbox: parseBbox(query.bbox),
     ...pagination,
   });
-  return jsonResponse(places, undefined, pagination);
+  return jsonResponse(places.map(toPlaceResponse), undefined, pagination);
 });
 
 placeRoutes.get("/.geojson", zValidator("query", placesQuerySchema), async (c) => {
@@ -57,8 +58,16 @@ export async function placesGeoJsonResponse(
 placeRoutes.get("/:place_id", async (c) => {
   const place = await getPlace(c.env.DB, c.req.param("place_id"));
   if (!place) return jsonResponse({ error: "place_not_found" }, { status: 404 });
-  return jsonResponse(place);
+  return jsonResponse(toPlaceResponse(place));
 });
+
+export function toPlaceResponse(place: Place): PlaceResponse {
+  const { attributes_json, ...response } = place;
+  return {
+    ...response,
+    attributes: parseJsonValue(attributes_json, {}),
+  };
+}
 
 function parseBbox(value: string | undefined): [number, number, number, number] | undefined {
   if (!value) return undefined;

@@ -37,8 +37,14 @@ Every JSON endpoint returns:
 ## RSS Entries
 
 `GET /api/v2/rss/entries` returns RSS entries with `tags` as a parsed string
-array. `tags_json` remains in the response for backward compatibility with
-existing clients and should be treated as legacy.
+array.
+
+JSON-valued database fields are returned as structured response fields:
+
+- place `attributes_json` is returned as `attributes`
+- dataset record `raw_json` is returned as `raw`
+- change `before_json` / `after_json` are returned as `before` / `after`
+- RSS `tags_json` is returned as `tags`
 
 Array responses include `meta.result_count`. Paginated endpoints may also
 include `meta.limit` and `meta.offset`.

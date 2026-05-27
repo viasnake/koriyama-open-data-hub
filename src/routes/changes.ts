@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { jsonResponse } from "../constants";
-import type { Bindings } from "../types";
+import type { Bindings, RecordChange, RecordChangeResponse } from "../types";
+import { parseJsonValue } from "../utils/json";
 import { parsePagination } from "../utils/pagination";
 
 export const changeRoutes = new Hono<{ Bindings: Bindings }>();
@@ -27,7 +28,16 @@ changeRoutes.get(
       : c.env.DB
           .prepare("select * from record_changes order by changed_at desc limit ? offset ?")
           .bind(pagination.limit, pagination.offset);
-    const result = await statement.all();
-    return jsonResponse(result.results, undefined, pagination);
+    const result = await statement.all<RecordChange>();
+    return jsonResponse(result.results.map(toRecordChangeResponse), undefined, pagination);
   },
 );
+
+function toRecordChangeResponse(change: RecordChange): RecordChangeResponse {
+  const { before_json, after_json, ...response } = change;
+  return {
+    ...response,
+    before: before_json == null ? null : parseJsonValue(before_json),
+    after: after_json == null ? null : parseJsonValue(after_json),
+  };
+}

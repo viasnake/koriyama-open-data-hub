@@ -4,6 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 import { listPlaces } from "../db/queries";
 import { jsonResponse } from "../constants";
 import type { Bindings } from "../types";
+import { toPlaceResponse } from "./places";
 import { parsePagination } from "../utils/pagination";
 
 export const searchRoutes = new Hono<{ Bindings: Bindings }>();
@@ -22,6 +23,6 @@ searchRoutes.get(
     const query = c.req.valid("query");
     const pagination = parsePagination(query, 100);
     const places = await listPlaces(c.env.DB, { query: query.q, ...pagination });
-    return jsonResponse({ places, count: places.length, ...pagination });
+    return jsonResponse({ places: places.map(toPlaceResponse), count: places.length, ...pagination });
   },
 );
