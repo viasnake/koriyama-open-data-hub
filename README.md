@@ -1,10 +1,6 @@
-# Koriyama Open Data Hub
+# 郡山市オープンデータ非公式 WebAPI
 
-郡山市オープンデータ非公式 Webapi v2 の実装リポジトリです。
-
-このプロジェクトは郡山市公式サービスではありません。郡山市が公開する
-オープンデータと RSS を、安定した dataset id、JSON API、GeoJSON、
-検索 UI で利用しやすくするための非公式データ流通レイヤーです。
+郡山市オープンデータ非公式 WebAPI の実装リポジトリです。
 
 ## Status
 
@@ -22,6 +18,7 @@ Initial API MVP scaffold.
 ## API
 
 The public API is versioned under `/api/v2`.
+The canonical public endpoint is `https://koriyama-open-data-hub.alflag.org/`.
 
 Implemented routes:
 
@@ -98,7 +95,8 @@ See:
 
 ## Disclaimer
 
-このサービスは非公式です。郡山市公式サービスではありません。
+このリポジトリは非公式です。
+郡山市公式リポジトリではありません。
 
 データの正確性、完全性、最新性、可用性は保証しません。正確な内容は必ず
 郡山市公式ウェブサイトで確認してください。

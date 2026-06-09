@@ -2,6 +2,7 @@
 
 All public endpoints are read-only. API resources are versioned under
 `/api/v2`; `GET /` returns service information and links to the versioned API.
+The canonical public endpoint is `https://koriyama-open-data-hub.alflag.org/`.
 
 Every JSON endpoint returns:
 
