@@ -10,6 +10,10 @@ html.light {
   --accent-a3: rgba(15, 118, 110, 0.2);
   --accent-a9: rgba(15, 118, 110, 0.82);
   --accent-a11: rgba(15, 118, 110, 0.94);
+  --nav-surface: rgba(251, 254, 254, 0.92);
+  --nav-surface-strong: #eef8f7;
+  --nav-border: rgba(15, 118, 110, 0.2);
+  --nav-shadow: 0 10px 28px rgba(18, 54, 59, 0.08);
   --sy-c-link: #0f5f61;
   --sy-c-link-hover: #0b474a;
   --sy-c-heading: #12363b;
@@ -23,6 +27,10 @@ html.dark {
   --accent-a3: rgba(94, 199, 193, 0.24);
   --accent-a9: rgba(94, 199, 193, 0.82);
   --accent-a11: rgba(156, 228, 223, 0.94);
+  --nav-surface: rgba(15, 23, 24, 0.92);
+  --nav-surface-strong: #162525;
+  --nav-border: rgba(94, 199, 193, 0.24);
+  --nav-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
   --sy-c-link: #9ce4df;
   --sy-c-link-hover: #c9f8f3;
   --sy-c-heading: #d8f3f5;
@@ -45,6 +53,130 @@ html.dark {
 
 .yue h1 {
   font-weight: 760;
+}
+
+.sy-head {
+  border-bottom: 1px solid var(--nav-border);
+  box-shadow: var(--nav-shadow);
+}
+
+.sy-head-blur {
+  background: var(--nav-surface);
+  -webkit-backdrop-filter: saturate(1.25) blur(16px);
+  backdrop-filter: saturate(1.25) blur(16px);
+}
+
+.sy-head-inner {
+  min-height: 4rem;
+}
+
+.sy-head-brand strong {
+  color: var(--sy-c-heading);
+  font-weight: 780;
+}
+
+.sy-head-links ul {
+  gap: 0.35rem;
+}
+
+.sy-head-links a,
+.sy-head-socials a,
+.sy-head-actions button {
+  border-radius: 8px;
+}
+
+.sy-head-links a {
+  color: var(--sy-c-text);
+  font-weight: 640;
+  padding: 0.45rem 0.7rem;
+}
+
+.sy-head-links a:hover {
+  background: var(--accent-a2);
+  color: var(--sy-c-link-hover);
+}
+
+.sy-head-extra .searchbox {
+  background: var(--nav-surface-strong);
+  border: 1px solid var(--nav-border);
+  border-radius: 8px;
+  min-width: 14rem;
+}
+
+.sy-head-extra .searchbox input {
+  color: var(--sy-c-text);
+}
+
+.sy-lside .sy-scrollbar {
+  padding-top: 1.25rem;
+}
+
+.globaltoc > ul {
+  border-left: 1px solid var(--nav-border);
+  padding-left: 0.75rem;
+}
+
+.globaltoc li {
+  margin: 0.25rem 0;
+}
+
+.globaltoc a {
+  border-radius: 8px;
+  color: var(--sy-c-text);
+  display: block;
+  font-weight: 560;
+  line-height: 1.45;
+  padding: 0.5rem 0.65rem;
+}
+
+.globaltoc > ul a.current {
+  background: var(--accent-a2);
+  box-shadow: inset 3px 0 0 var(--accent-9);
+  color: var(--sy-c-heading);
+  font-weight: 760;
+}
+
+.globaltoc > ul a:hover {
+  background: var(--nav-surface-strong);
+  color: var(--sy-c-link-hover);
+}
+
+.sy-rside-inner > div > h3 {
+  color: var(--sy-c-heading);
+}
+
+.localtoc > ul {
+  border-left: 1px solid var(--nav-border);
+  padding-left: 0.75rem;
+}
+
+.localtoc > ul li {
+  margin-bottom: 0.18rem;
+  margin-top: 0.18rem;
+}
+
+.localtoc > ul li > a {
+  border-radius: 6px;
+  color: var(--sy-c-text);
+  display: block;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  padding: 0.28rem 0.45rem;
+}
+
+.localtoc > ul li > a:hover {
+  background: var(--nav-surface-strong);
+}
+
+.localtoc > ul li.active > a {
+  background: var(--accent-a2);
+  color: var(--sy-c-heading);
+  font-weight: 700;
+}
+
+.localtoc code {
+  font-size: 0.88em;
+  white-space: normal;
 }
 
 .yue h2 {
@@ -81,4 +213,20 @@ html.dark .admonition.attention > .admonition-title,
 html.dark .admonition.warning > .admonition-title {
   background: #3b2614;
   color: #fed7aa;
+}
+
+@media (max-width: 767px) {
+  .sy-head-nav {
+    background: var(--sy-c-background);
+    border-top: 1px solid var(--nav-border);
+  }
+
+  .sy-head-extra .searchbox {
+    min-width: 0;
+  }
+
+  .globaltoc > ul {
+    border-left: none;
+    padding-left: 0;
+  }
 }

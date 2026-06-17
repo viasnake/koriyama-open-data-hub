@@ -61,7 +61,7 @@ curl "https://koriyama-open-data-hub.alflag.org/api/v2/places.geojson?category=f
 ```{toctree}
 :maxdepth: 2
 
-api
-datasets
-attribution
+API リファレンス <api>
+データセット API <datasets>
+出典・ライセンス <attribution>
 ```
