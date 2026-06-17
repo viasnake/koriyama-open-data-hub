@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { PUBLIC_API_ENDPOINT } from "./constants";
+import { PUBLIC_API_BASE_URL } from "./constants";
 import { app, shouldIngestOpenData } from "./index";
 
-type RootResponse = {
+type ServiceInfoResponse = {
   data: {
     name: string;
     api_endpoint: string;
@@ -13,15 +13,23 @@ type RootResponse = {
 };
 
 describe("root route", () => {
-  it("returns service information instead of redirecting", async () => {
+  it("redirects to the documentation", async () => {
     const response = await app.request("/");
-    const body = (await response.json()) as RootResponse;
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/docs/");
+  });
+});
+
+describe("api root route", () => {
+  it("returns service information", async () => {
+    const response = await app.request("/api/v2");
+    const body = (await response.json()) as ServiceInfoResponse;
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("location")).toBeNull();
     expect(body.data).toMatchObject({
       name: "Koriyama Open Data Hub",
-      api_endpoint: PUBLIC_API_ENDPOINT,
+      api_endpoint: PUBLIC_API_BASE_URL,
       api_base_path: "/api/v2",
     });
     expect(body.data.repository_url).toBeUndefined();

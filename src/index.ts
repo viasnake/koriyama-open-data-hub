@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { CORS_HEADERS, jsonResponse, PUBLIC_API_ENDPOINT } from "./constants";
+import { CORS_HEADERS, jsonResponse, PUBLIC_API_BASE_URL, PUBLIC_API_ENDPOINT } from "./constants";
 import { changeRoutes } from "./routes/changes";
 import { datasetRoutes } from "./routes/datasets";
 import { healthRoutes } from "./routes/health";
@@ -26,16 +26,16 @@ app.use(
 
 app.options("*", () => new Response(null, { headers: CORS_HEADERS }));
 
-app.get("/", () =>
-  jsonResponse({
+function serviceInfo() {
+  return {
     name: "Koriyama Open Data Hub",
     description:
       "Unofficial API for Koriyama City open data, RSS entries, places, and GeoJSON.",
-    api_endpoint: PUBLIC_API_ENDPOINT,
+    api_endpoint: PUBLIC_API_BASE_URL,
     api_base_path: "/api/v2",
     documentation_url: new URL("docs/", PUBLIC_API_ENDPOINT).toString(),
     endpoints: [
-      "/docs/",
+      "/api/v2",
       "/api/v2/health",
       "/api/v2/datasets",
       "/api/v2/places",
@@ -44,12 +44,15 @@ app.get("/", () =>
       "/api/v2/changes",
       "/api/v2/rss/entries",
     ],
-  }),
-);
+  };
+}
+
+app.get("/", (c) => c.redirect("/docs/"));
 
 app.get("/docs", (c) => c.redirect("/docs/"));
 
 const api = new Hono<{ Bindings: Bindings }>();
+api.get("/", () => jsonResponse(serviceInfo()));
 api.route("/health", healthRoutes);
 api.route("/datasets", datasetRoutes);
 api.get("/places.geojson", async (c) =>
