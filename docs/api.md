@@ -125,6 +125,8 @@ curl https://koriyama-open-data-hub.alflag.org/api/v2
 
 ## データセット
 
+データセット系 API の詳細な request / response、フィールド仕様、警告値は {doc}`datasets` を確認してください。
+
 ### `GET /api/v2/datasets`
 
 公開 API で利用できるデータセット一覧を返します。
