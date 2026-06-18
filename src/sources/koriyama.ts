@@ -14,7 +14,7 @@ export type SourceFile = {
 export async function fetchSourceFile(file: SourceFile): Promise<ArrayBuffer> {
   const response = await fetch(file.url, {
     headers: {
-      "User-Agent": "koriyama-open-data-hub/0.1",
+      "User-Agent": "civic-koriyama-data/0.1",
     },
   });
 

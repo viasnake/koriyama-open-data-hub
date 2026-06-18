@@ -20,7 +20,7 @@ export default function App() {
   return (
     <main>
       <header>
-        <h1>Koriyama Open Data Hub</h1>
+        <h1>Civic Koriyama Data</h1>
         <p>郡山市オープンデータ非公式 Webapi v2</p>
       </header>
       <section>

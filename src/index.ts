@@ -29,7 +29,7 @@ app.options("*", () => new Response(null, { headers: CORS_HEADERS }));
 
 function serviceInfo() {
   return {
-    name: "Koriyama Open Data Hub",
+    name: "Civic Koriyama Data",
     description:
       "Unofficial API for Koriyama City open data, RSS entries, places, and GeoJSON.",
     api_endpoint: PUBLIC_API_BASE_URL,

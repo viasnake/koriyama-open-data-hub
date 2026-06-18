@@ -1,6 +1,6 @@
-# Koriyama Open Data Hub
+# Civic Koriyama Data
 
-Koriyama Open Data Hub は、郡山市が公開しているオープンデータと公式サイト RSS を、アプリケーションから扱いやすい JSON / GeoJSON で取得するための非公式 Web API です。
+Civic Koriyama Data は、郡山市が公開しているオープンデータと公式サイト RSS を、アプリケーションから扱いやすい JSON / GeoJSON で取得するための非公式 Web API です。
 
 公共施設、AED 設置箇所、公衆無線 LAN、公衆トイレ、子育て施設、医療機関、学校などの地点データを検索できます。地点データは GeoJSON FeatureCollection としても取得できます。
 
@@ -14,11 +14,11 @@ Koriyama Open Data Hub は、郡山市が公開しているオープンデータ
 
 | 項目 | 値 |
 | --- | --- |
-| 公開 URL | <https://koriyama-open-data-hub.alflag.org/> |
+| 公開 URL | <https://civic-koriyama-data.alflag.org/> |
 | 旧称 | 郡山市オープンデータ非公式 WebAPI |
 | API バージョン | `2.0` |
 | API ベースパス | `/api/v2` |
-| API ベース URL | <https://koriyama-open-data-hub.alflag.org/api/v2> |
+| API ベース URL | <https://civic-koriyama-data.alflag.org/api/v2> |
 | レスポンス形式 | JSON、GeoJSON |
 
 旧 v1 API は提供を終了しています。現在は `/api/v2` を利用してください。
@@ -28,25 +28,25 @@ Koriyama Open Data Hub は、郡山市が公開しているオープンデータ
 データセット一覧を取得します。
 
 ```bash
-curl https://koriyama-open-data-hub.alflag.org/api/v2/datasets
+curl https://civic-koriyama-data.alflag.org/api/v2/datasets
 ```
 
 AED 設置箇所を 5 件取得します。
 
 ```bash
-curl "https://koriyama-open-data-hub.alflag.org/api/v2/places?dataset_id=aed&limit=5"
+curl "https://civic-koriyama-data.alflag.org/api/v2/places?dataset_id=aed&limit=5"
 ```
 
 キーワードで地点データを検索します。
 
 ```bash
-curl "https://koriyama-open-data-hub.alflag.org/api/v2/search?q=公民館"
+curl "https://civic-koriyama-data.alflag.org/api/v2/search?q=公民館"
 ```
 
 地図アプリなどで使う GeoJSON を取得します。
 
 ```bash
-curl "https://koriyama-open-data-hub.alflag.org/api/v2/places.geojson?category=facility"
+curl "https://civic-koriyama-data.alflag.org/api/v2/places.geojson?category=facility"
 ```
 
 ## 取得できるもの

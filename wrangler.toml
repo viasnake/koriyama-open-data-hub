@@ -1,4 +1,4 @@
-name = "koriyama-open-data-hub"
+name = "civic-koriyama-data"
 main = "src/index.ts"
 compatibility_date = "2026-05-25"
 
@@ -23,5 +23,5 @@ crons = [
 
 [[d1_databases]]
 binding = "DB"
-database_name = "koriyama-open-data-hub-prod"
+database_name = "civic-koriyama-data-prod"
 database_id = "cb6e3e65-f79c-469c-906e-875f36ffe911"

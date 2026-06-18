@@ -1,8 +1,8 @@
 # データセット API リファレンス
 
-データセット API は、Koriyama Open Data Hub で公開しているデータセットの一覧、出典メタデータ、元データ行を取得するための API です。
+データセット API は、Civic Koriyama Data で公開しているデータセットの一覧、出典メタデータ、元データ行を取得するための API です。
 
-このページの例では、ベース URL を `https://koriyama-open-data-hub.alflag.org/api/v2` として記載します。API 全体の共通仕様、認証、CORS、JSON envelope は {doc}`api` を確認してください。
+このページの例では、ベース URL を `https://civic-koriyama-data.alflag.org/api/v2` として記載します。API 全体の共通仕様、認証、CORS、JSON envelope は {doc}`api` を確認してください。
 
 ```{admonition} dataset_id は安定した識別子です
 :class: note
@@ -41,7 +41,7 @@
 ### リクエスト
 
 ```bash
-curl https://koriyama-open-data-hub.alflag.org/api/v2/datasets
+curl https://civic-koriyama-data.alflag.org/api/v2/datasets
 ```
 
 Query パラメータはありません。
@@ -109,7 +109,7 @@ Query パラメータはありません。
 ### リクエスト
 
 ```bash
-curl https://koriyama-open-data-hub.alflag.org/api/v2/datasets/aed
+curl https://civic-koriyama-data.alflag.org/api/v2/datasets/aed
 ```
 
 ### レスポンス
@@ -182,7 +182,7 @@ curl https://koriyama-open-data-hub.alflag.org/api/v2/datasets/aed
 ### リクエスト
 
 ```bash
-curl "https://koriyama-open-data-hub.alflag.org/api/v2/datasets/aed/records?limit=1"
+curl "https://civic-koriyama-data.alflag.org/api/v2/datasets/aed/records?limit=1"
 ```
 
 ### レスポンス
@@ -301,7 +301,7 @@ curl "https://koriyama-open-data-hub.alflag.org/api/v2/datasets/aed/records?limi
 存在しない `dataset_id` を指定した場合は、`404 dataset_not_found` を返します。
 
 ```bash
-curl -i https://koriyama-open-data-hub.alflag.org/api/v2/datasets/not_found
+curl -i https://civic-koriyama-data.alflag.org/api/v2/datasets/not_found
 ```
 
 レスポンス例:
@@ -328,7 +328,7 @@ curl -i https://koriyama-open-data-hub.alflag.org/api/v2/datasets/not_found
 データセット ID を選ばせてから地点データを取得する:
 
 ```javascript
-const apiBaseUrl = "https://koriyama-open-data-hub.alflag.org/api/v2";
+const apiBaseUrl = "https://civic-koriyama-data.alflag.org/api/v2";
 
 const datasetsResponse = await fetch(`${apiBaseUrl}/datasets`);
 const datasets = (await datasetsResponse.json()).data;
@@ -341,7 +341,7 @@ const places = (await placesResponse.json()).data;
 出典表示に必要な情報を取得する:
 
 ```javascript
-const response = await fetch("https://koriyama-open-data-hub.alflag.org/api/v2/datasets/aed");
+const response = await fetch("https://civic-koriyama-data.alflag.org/api/v2/datasets/aed");
 const { data: dataset } = await response.json();
 
 console.log(dataset.source_page_label);
@@ -352,7 +352,7 @@ console.log(dataset.source_files.map((file) => file.url));
 元データの列名を確認する:
 
 ```bash
-curl "https://koriyama-open-data-hub.alflag.org/api/v2/datasets/aed/records?limit=1"
+curl "https://civic-koriyama-data.alflag.org/api/v2/datasets/aed/records?limit=1"
 ```
 
 ## 関連エンドポイント

@@ -46,7 +46,7 @@ describe("api root route", () => {
 
     expect(response.status).toBe(200);
     expect(body.data).toMatchObject({
-      name: "Koriyama Open Data Hub",
+      name: "Civic Koriyama Data",
       api_endpoint: PUBLIC_API_BASE_URL,
       api_base_path: "/api/v2",
     });

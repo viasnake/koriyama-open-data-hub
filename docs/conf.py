@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-project = "Koriyama Open Data Hub"
+project = "Civic Koriyama Data"
 author = "viasnake"
 copyright = "2026, viasnake"
 
@@ -29,9 +29,9 @@ myst_enable_extensions = [
 ]
 
 html_theme = "shibuya"
-html_title = "Koriyama Open Data Hub ドキュメント"
-html_short_title = "Open Data Hub"
-html_baseurl = "https://koriyama-open-data-hub.alflag.org/docs/"
+html_title = "Civic Koriyama Data ドキュメント"
+html_short_title = "Civic Koriyama Data"
+html_baseurl = "https://civic-koriyama-data.alflag.org/docs/"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_copy_source = False
@@ -42,16 +42,16 @@ html_theme_options = {
     "color_mode": "auto",
     "globaltoc_expand_depth": 1,
     "page_layout": "default",
-    "github_url": "https://github.com/viasnake/koriyama-open-data-hub",
+    "github_url": "https://github.com/viasnake/civic-koriyama-data",
     "nav_links": [
         {
             "title": "API",
-            "url": "https://koriyama-open-data-hub.alflag.org/api/v2",
+            "url": "https://civic-koriyama-data.alflag.org/api/v2",
             "external": True,
         },
         {
             "title": "GitHub",
-            "url": "https://github.com/viasnake/koriyama-open-data-hub",
+            "url": "https://github.com/viasnake/civic-koriyama-data",
             "external": True,
         },
     ],
@@ -59,7 +59,7 @@ html_theme_options = {
 html_context = {
     "source_type": "github",
     "source_user": "viasnake",
-    "source_repo": "koriyama-open-data-hub",
+    "source_repo": "civic-koriyama-data",
     "source_version": "master",
     "source_docs_path": "/docs/",
 }
