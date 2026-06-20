@@ -9,12 +9,16 @@
     "docs:install": "python -m pip install -r docs/requirements.txt",
     "docs:build": "rm -rf public .tmp/sphinx-doctrees && python -m sphinx -b html -d .tmp/sphinx-doctrees -W --keep-going docs public/docs",
     "docs:prepare": "npm run docs:install && npm run docs:build",
-    "deploy:production": "npm run docs:prepare && npx --yes wrangler d1 migrations apply DB --remote && npx --yes wrangler deploy",
+    "deploy:production": "node scripts/deploy-production.mjs",
     "deploy:preview": "npm run docs:prepare && npx --yes wrangler versions upload",
     "check": "npm run typecheck && npm test && npm run audit:high",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "audit:high": "npm audit --audit-level=high",
+    "rss:verify": "tsx scripts/rss/verify-feeds.ts",
+    "rss:discover": "tsx scripts/rss/discover-feeds.ts",
+    "rss:audit": "tsx scripts/rss/audit-feeds.ts",
+    "rss:fetch": "tsx scripts/rss/fetch-entries.ts",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate": "wrangler d1 migrations apply DB --remote"
   },
@@ -33,6 +37,7 @@
     "@cloudflare/workers-types": "^4.20260524.0",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
+    "tsx": "^4.22.4",
     "typescript": "^5.9.3",
     "vitest": "^4.1.9"
   }

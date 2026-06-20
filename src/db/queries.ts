@@ -1,4 +1,12 @@
-import type { DatasetCatalogItem, FetchLog, Place, RawRecord, RssEntry } from "../types";
+import {
+  KORIYAMA_RSS_FEEDS,
+  rssFeedUrl,
+  type DiscoveredFeed,
+  type FeedVerification,
+  type RssDiscoveryReport,
+  verificationStatusFromResult,
+} from "../sources/rss";
+import type { DatasetCatalogItem, FetchLog, Place, RawRecord, RssEntry, RssFeed, RssFeedKind } from "../types";
 
 type DatasetRow = Omit<DatasetCatalogItem, "enabled" | "public_api" | "source_type" | "format" | "normalize_as"> & {
   source_page: string;
@@ -160,6 +168,9 @@ export async function getPlace(db: D1Database, placeId: string): Promise<Place |
 
 export type RssEntryFilters = {
   category?: string;
+  feedId?: string;
+  kind?: RssFeedKind;
+  since?: string;
   limit?: number;
   offset?: number;
 };
@@ -167,11 +178,319 @@ export type RssEntryFilters = {
 export async function listRssEntries(db: D1Database, filters: RssEntryFilters = {}): Promise<RssEntry[]> {
   const limit = filters.limit ?? 100;
   const offset = filters.offset ?? 0;
-  const statement = filters.category
-    ? db.prepare("select * from rss_entries where category = ? order by published_at desc limit ? offset ?")
-    : db.prepare("select * from rss_entries order by published_at desc limit ? offset ?");
-  const result = await (filters.category ? statement.bind(filters.category, limit, offset) : statement.bind(limit, offset)).all<RssEntry>();
+  const clauses: string[] = [];
+  const bindings: unknown[] = [];
+
+  if (filters.category) {
+    clauses.push("e.category = ?");
+    bindings.push(filters.category);
+  }
+  if (filters.feedId) {
+    clauses.push("exists (select 1 from rss_entry_feeds ef_filter where ef_filter.entry_id = e.id and ef_filter.feed_id = ?)");
+    bindings.push(filters.feedId);
+  }
+  if (filters.kind) {
+    clauses.push("exists (select 1 from rss_entry_feeds ef_kind join rss_feeds f_kind on f_kind.id = ef_kind.feed_id where ef_kind.entry_id = e.id and f_kind.kind = ?)");
+    bindings.push(filters.kind);
+  }
+  if (filters.since) {
+    clauses.push("coalesce(e.published_at, e.fetched_at) >= ?");
+    bindings.push(filters.since);
+  }
+
+  const where = clauses.length > 0 ? `where ${clauses.join(" and ")}` : "";
+  const result = await db
+    .prepare(
+      `select
+        e.id,
+        coalesce(e.feed_id, min(ef.feed_id)) as feed_id,
+        group_concat(distinct ef.feed_id) as feed_ids,
+        group_concat(distinct f.kind) as feed_kinds,
+        e.title,
+        e.link,
+        e.published_at,
+        e.fetched_at,
+        e.category,
+        e.tags_json,
+        e.source_hash,
+        e.canonical_url
+      from rss_entries e
+      left join rss_entry_feeds ef on ef.entry_id = e.id
+      left join rss_feeds f on f.id = ef.feed_id
+      ${where}
+      group by e.id
+      order by coalesce(e.published_at, e.fetched_at) desc
+      limit ? offset ?`,
+    )
+    .bind(...bindings, limit, offset)
+    .all<RssEntry>();
   return result.results;
+}
+
+export type RssFeedFilters = {
+  includeDisabled?: boolean;
+  includeUnverified?: boolean;
+  kind?: RssFeedKind;
+};
+
+type RssFeedRow = Omit<RssFeed, "enabled"> & {
+  enabled: number;
+};
+
+export async function syncSeedRssFeeds(db: D1Database, now = new Date().toISOString()): Promise<void> {
+  const statement = db.prepare(
+    `insert into rss_feeds (
+      id,
+      name,
+      title,
+      url,
+      path,
+      kind,
+      source,
+      enabled,
+      verification_status,
+      first_seen_at,
+      last_seen_at,
+      created_at,
+      updated_at
+    ) values (?, ?, ?, ?, ?, ?, 'seed', 0, 'unchecked', ?, ?, ?, ?)
+    on conflict(id) do update set
+      name = excluded.name,
+      title = excluded.title,
+      url = excluded.url,
+      path = excluded.path,
+      kind = excluded.kind,
+      source = 'seed',
+      last_seen_at = excluded.last_seen_at,
+      updated_at = excluded.updated_at`,
+  );
+
+  await db.batch(
+    KORIYAMA_RSS_FEEDS.map((feed) =>
+      statement.bind(feed.id, feed.title, feed.title, rssFeedUrl(feed.path), feed.path, feed.kind, now, now, now, now),
+    ),
+  );
+}
+
+export async function listRssFeeds(db: D1Database, filters: RssFeedFilters = {}): Promise<RssFeed[]> {
+  const clauses: string[] = [];
+  const bindings: unknown[] = [];
+
+  if (!filters.includeDisabled) {
+    clauses.push("enabled = 1");
+  }
+  if (!filters.includeUnverified) {
+    clauses.push("verification_status = 'ok'");
+  }
+  if (filters.kind) {
+    clauses.push("kind = ?");
+    bindings.push(filters.kind);
+  }
+
+  const where = clauses.length > 0 ? `where ${clauses.join(" and ")}` : "";
+  const result = await db
+    .prepare(
+      `select
+        id,
+        kind,
+        coalesce(title, name) as title,
+        url,
+        path,
+        source,
+        enabled,
+        verified_at,
+        verification_status,
+        http_status,
+        last_error,
+        first_seen_at,
+        last_seen_at,
+        discovered_from_url
+      from rss_feeds
+      ${where}
+      order by
+        case kind when 'global' then 1 when 'life' then 2 when 'site' then 3 else 4 end,
+        id`,
+    )
+    .bind(...bindings)
+    .all<RssFeedRow>();
+
+  return result.results.map(mapRssFeed);
+}
+
+export async function updateRssFeedVerifications(db: D1Database, verifications: FeedVerification[]): Promise<void> {
+  const statement = db.prepare(
+    `update rss_feeds
+    set
+      enabled = ?,
+      verified_at = ?,
+      verification_status = ?,
+      http_status = ?,
+      last_error = ?,
+      updated_at = ?
+    where id = ?`,
+  );
+
+  await db.batch(
+    verifications.map((verification) => {
+      const status = verificationStatusFromResult(verification.result);
+      return statement.bind(
+        status === "ok" ? 1 : 0,
+        verification.verified_at,
+        status,
+        verification.result.httpStatus,
+        verification.result.status === "ok" ? null : verification.result.error,
+        verification.verified_at,
+        verification.seed.id,
+      );
+    }),
+  );
+}
+
+export async function upsertDiscoveredRssFeeds(db: D1Database, feeds: DiscoveredFeed[]): Promise<void> {
+  if (feeds.length === 0) return;
+
+  const statement = db.prepare(
+    `insert into rss_feeds (
+      id,
+      name,
+      title,
+      url,
+      path,
+      kind,
+      source,
+      enabled,
+      verification_status,
+      first_seen_at,
+      last_seen_at,
+      discovered_from_url,
+      created_at,
+      updated_at
+    ) values (?, ?, ?, ?, ?, ?, 'discovered', 0, 'unchecked', ?, ?, ?, ?, ?)
+    on conflict(id) do update set
+      last_seen_at = excluded.last_seen_at,
+      discovered_from_url = coalesce(rss_feeds.discovered_from_url, excluded.discovered_from_url),
+      updated_at = excluded.updated_at`,
+  );
+
+  await db.batch(
+    feeds.map((feed) =>
+      statement.bind(
+        feed.id,
+        feed.title,
+        feed.title,
+        feed.url,
+        feed.path,
+        feed.kind,
+        feed.first_seen_at,
+        feed.last_seen_at,
+        feed.discovered_from_url,
+        feed.last_seen_at,
+        feed.last_seen_at,
+      ),
+    ),
+  );
+}
+
+export type RssEntryUpsert = {
+  id: string;
+  feedId: string;
+  title: string;
+  link: string;
+  publishedAt: string | null;
+  fetchedAt: string;
+  category: string | null;
+  tags: string[];
+  sourceHash: string;
+  canonicalUrl: string | null;
+};
+
+export async function upsertRssEntries(db: D1Database, entries: RssEntryUpsert[]): Promise<void> {
+  if (entries.length === 0) return;
+
+  const entryStatement = db.prepare(
+    `insert into rss_entries (
+      id,
+      feed_id,
+      title,
+      link,
+      published_at,
+      fetched_at,
+      category,
+      tags_json,
+      source_hash,
+      canonical_url
+    ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    on conflict(id) do update set
+      feed_id = coalesce(rss_entries.feed_id, excluded.feed_id),
+      title = excluded.title,
+      link = excluded.link,
+      published_at = excluded.published_at,
+      fetched_at = excluded.fetched_at,
+      category = excluded.category,
+      tags_json = excluded.tags_json,
+      source_hash = excluded.source_hash,
+      canonical_url = excluded.canonical_url`,
+  );
+  const entryFeedStatement = db.prepare(
+    `insert into rss_entry_feeds (
+      entry_id,
+      feed_id,
+      first_seen_at,
+      last_seen_at
+    ) values (?, ?, ?, ?)
+    on conflict(entry_id, feed_id) do update set
+      last_seen_at = excluded.last_seen_at`,
+  );
+
+  await runStatementBatches(
+    db,
+    entries.flatMap((entry) => [
+      entryStatement.bind(
+        entry.id,
+        entry.feedId,
+        entry.title,
+        entry.link,
+        entry.publishedAt,
+        entry.fetchedAt,
+        entry.category,
+        JSON.stringify(entry.tags),
+        entry.sourceHash,
+        entry.canonicalUrl,
+      ),
+      entryFeedStatement.bind(entry.id, entry.feedId, entry.fetchedAt, entry.fetchedAt),
+    ]),
+  );
+}
+
+export async function insertRssAuditReport(db: D1Database, report: RssDiscoveryReport): Promise<void> {
+  await db
+    .prepare(
+      `insert into rss_audits (
+        generated_at,
+        seed_count,
+        discovered_count,
+        verified_ok_count,
+        dead_count,
+        parse_error_count,
+        report_json
+      ) values (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      report.generated_at,
+      report.seed_count,
+      report.discovered_count,
+      report.verified_ok_count,
+      report.dead_count,
+      report.parse_error_count,
+      JSON.stringify(report),
+    )
+    .run();
+}
+
+export async function getLatestRssAuditReport(db: D1Database): Promise<RssDiscoveryReport | null> {
+  const row = await db.prepare("select report_json from rss_audits order by generated_at desc, id desc limit 1").first<{ report_json: string }>();
+  if (!row) return null;
+  return JSON.parse(row.report_json) as RssDiscoveryReport;
 }
 
 export async function listRecentFetchLogs(db: D1Database, sourceType: string, limit = 10): Promise<FetchLog[]> {
@@ -195,7 +514,10 @@ export async function listRecentFetchLogs(db: D1Database, sourceType: string, li
   return result.results;
 }
 
-export async function countTable(db: D1Database, table: "raw_records" | "places" | "rss_entries" | "record_changes"): Promise<number> {
+export async function countTable(
+  db: D1Database,
+  table: "raw_records" | "places" | "rss_entries" | "rss_feeds" | "record_changes",
+): Promise<number> {
   const row = await db.prepare(`select count(*) as count from ${table}`).first<{ count: number }>();
   return row?.count ?? 0;
 }
@@ -231,4 +553,17 @@ export async function insertFetchLog(
       input.errorMessage ?? null,
     )
     .run();
+}
+
+function mapRssFeed(row: RssFeedRow): RssFeed {
+  return {
+    ...row,
+    enabled: row.enabled === 1,
+  };
+}
+
+async function runStatementBatches(db: D1Database, statements: D1PreparedStatement[], chunkSize = 100): Promise<void> {
+  for (let index = 0; index < statements.length; index += chunkSize) {
+    await db.batch(statements.slice(index, index + chunkSize));
+  }
 }

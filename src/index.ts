@@ -10,10 +10,11 @@ import { rssRoutes } from "./routes/rss";
 import { searchRoutes } from "./routes/search";
 import { countTable } from "./db/queries";
 import { ingestOpenData } from "./jobs/ingest";
-import { ingestRss } from "./jobs/rss";
+import { auditRssRegistry, ingestRss } from "./jobs/rss";
 import type { Bindings } from "./types";
 
 const OPEN_DATA_INGEST_UTC_HOUR = 18;
+const RSS_AUDIT_UTC_HOUR = 19;
 
 export const app = new Hono<{ Bindings: Bindings }>();
 
@@ -43,6 +44,8 @@ function serviceInfo() {
       "/api/v2/places.geojson",
       "/api/v2/search?q=",
       "/api/v2/changes",
+      "/api/v2/rss/feeds",
+      "/api/v2/rss/audit",
       "/api/v2/rss/entries",
     ],
   };
@@ -78,6 +81,10 @@ export function shouldIngestOpenData(scheduledAt: Date): boolean {
   return scheduledAt.getUTCHours() === OPEN_DATA_INGEST_UTC_HOUR;
 }
 
+export function shouldAuditRss(scheduledAt: Date): boolean {
+  return scheduledAt.getUTCHours() === RSS_AUDIT_UTC_HOUR;
+}
+
 async function shouldSelfHealOpenData(db: D1Database): Promise<boolean> {
   const [rawRecordsCount, placesCount] = await Promise.all([countTable(db, "raw_records"), countTable(db, "places")]);
   return rawRecordsCount === 0 || placesCount === 0;
@@ -90,6 +97,14 @@ async function runScheduledJobs(event: ScheduledEvent, env: Bindings): Promise<v
     await ingestRss(env.DB);
   } catch (error) {
     failures.push(error);
+  }
+
+  if (shouldAuditRss(new Date(event.scheduledTime))) {
+    try {
+      await auditRssRegistry(env.DB);
+    } catch (error) {
+      failures.push(error);
+    }
   }
 
   if (shouldIngestOpenData(new Date(event.scheduledTime)) || (await shouldSelfHealOpenData(env.DB))) {
