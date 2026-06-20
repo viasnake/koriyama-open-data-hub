@@ -8,7 +8,7 @@ import {
 } from "../sources/rss";
 import type { DatasetCatalogItem, FetchLog, Place, RawRecord, RssEntry, RssFeed, RssFeedKind } from "../types";
 
-const RSS_SEED_SYNC_CHUNK_SIZE = 50;
+const RSS_SEED_SYNC_CHUNK_SIZE = 8;
 const RSS_ENTRY_IDENTITY_LOOKUP_CHUNK_SIZE = 50;
 
 type DatasetRow = Omit<DatasetCatalogItem, "enabled" | "public_api" | "source_type" | "format" | "normalize_as"> & {
