@@ -5,6 +5,10 @@ import type { Bindings, FetchLog } from "../types";
 
 export const healthRoutes = new Hono<{ Bindings: Bindings }>();
 
+type PublicFetchLog = Omit<FetchLog, "error_message"> & {
+  error_message: string | null;
+};
+
 healthRoutes.get("/", async (c) => {
   const datasetSummary = await c.env.DB.prepare(
     `select
@@ -32,6 +36,8 @@ healthRoutes.get("/", async (c) => {
     ]);
   const failedOpenDataFetches = recentOpenDataFetches.filter((log) => log.status === "error");
   const failedRssFetches = recentRssFetches.filter((log) => log.status === "error");
+  const publicRecentOpenDataFetches = recentOpenDataFetches.map(toPublicFetchLog);
+  const publicRecentRssFetches = recentRssFetches.map(toPublicFetchLog);
   const status =
     hasCurrentFetchError(recentOpenDataFetches) || hasCurrentFetchError(recentRssFetches) || rawRecordsCount === 0 || placesCount === 0
       ? "degraded"
@@ -46,14 +52,14 @@ healthRoutes.get("/", async (c) => {
       raw_records_count: rawRecordsCount,
       places_count: placesCount,
       record_changes_count: recordChangesCount,
-      recent_fetches: recentOpenDataFetches,
-      failed: failedOpenDataFetches,
+      recent_fetches: publicRecentOpenDataFetches,
+      failed: failedOpenDataFetches.map(toPublicFetchLog),
     },
     rss: {
       last_success_at: lastRssFetch?.fetched_at ?? null,
       entries_count: rssEntriesCount,
-      recent_fetches: recentRssFetches,
-      failed: failedRssFetches,
+      recent_fetches: publicRecentRssFetches,
+      failed: failedRssFetches.map(toPublicFetchLog),
     },
   });
 });
@@ -62,4 +68,11 @@ export function hasCurrentFetchError(logs: readonly Pick<FetchLog, "fetched_at" 
   const latestFetchedAt = logs[0]?.fetched_at;
   if (!latestFetchedAt) return false;
   return logs.some((log) => log.fetched_at === latestFetchedAt && log.status === "error");
+}
+
+export function toPublicFetchLog(log: FetchLog): PublicFetchLog {
+  return {
+    ...log,
+    error_message: log.error_message ? "details_redacted" : null,
+  };
 }

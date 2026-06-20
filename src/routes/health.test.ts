@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasCurrentFetchError } from "./health";
+import { hasCurrentFetchError, toPublicFetchLog } from "./health";
 
 describe("hasCurrentFetchError", () => {
   it("ignores older errors after a newer successful fetch", () => {
@@ -19,5 +19,38 @@ describe("hasCurrentFetchError", () => {
         { status: "ok", fetched_at: "2026-06-19T18:00:28.162Z" },
       ]),
     ).toBe(true);
+  });
+});
+
+describe("toPublicFetchLog", () => {
+  it("redacts internal error details", () => {
+    expect(
+      toPublicFetchLog({
+        id: 1,
+        source_type: "rss",
+        source_id: "koriyama_city",
+        status: "error",
+        fetched_at: "2026-06-20T15:21:47.167Z",
+        records_count: 0,
+        error_message: "D1_ERROR: too many SQL variables at offset 856: SQLITE_ERROR",
+      }),
+    ).toMatchObject({
+      status: "error",
+      error_message: "details_redacted",
+    });
+  });
+
+  it("keeps empty error messages empty", () => {
+    expect(
+      toPublicFetchLog({
+        id: 2,
+        source_type: "rss",
+        source_id: "koriyama_city",
+        status: "ok",
+        fetched_at: "2026-06-20T15:25:26.390Z",
+        records_count: 303,
+        error_message: null,
+      }).error_message,
+    ).toBeNull();
   });
 });
