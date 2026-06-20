@@ -105,6 +105,8 @@ API は、同一クライアント IP アドレスからのリクエストを 60
 | `GET` | `/api/v2/places.geojson` | 地点データの GeoJSON |
 | `GET` | `/api/v2/search?q=` | 地点データ検索 |
 | `GET` | `/api/v2/changes` | 取得・正規化時に検出した変更履歴 |
+| `GET` | `/api/v2/rss/feeds` | 検証済み RSS feed 一覧 |
+| `GET` | `/api/v2/rss/audit` | RSS 監査レポート |
 | `GET` | `/api/v2/rss/entries` | 郡山市公式サイト RSS の記事情報 |
 
 ## サービス情報
@@ -293,6 +295,43 @@ curl "https://civic-koriyama-data.alflag.org/api/v2/changes?since=2026-06-01T00:
 
 ## RSS
 
+### `GET /api/v2/rss/feeds`
+
+郡山市公式サイトから取得対象にしている RSS feed の一覧を返します。既定では `enabled = true` かつ `verification_status = ok` の feed だけを返します。
+
+| Query | 説明 |
+| --- | --- |
+| `include_disabled` | `true` の場合、無効 feed も返します。 |
+| `include_unverified` | `true` の場合、未検証または検証失敗 feed も返します。 |
+| `kind` | `global`、`life`、`site` のいずれかで絞り込みます。 |
+
+```bash
+curl "https://civic-koriyama-data.alflag.org/api/v2/rss/feeds?kind=life"
+```
+
+レスポンスの `data.feeds[]` には、`id`、`kind`、`title`、`url`、`enabled`、`verification_status`、`verified_at` が入ります。
+
+### `GET /api/v2/rss/audit`
+
+RSS の最新監査レポートを返します。これは運用確認用のエンドポイントです。
+
+```bash
+curl https://civic-koriyama-data.alflag.org/api/v2/rss/audit
+```
+
+主な `data` フィールド:
+
+| フィールド | 説明 |
+| --- | --- |
+| `generated_at` | レポート生成日時 |
+| `seed_count` | seed の RSS 件数 |
+| `discovered_count` | discovery で見つかった RSS 件数 |
+| `verified_ok_count` | 生存確認 OK の seed 件数 |
+| `missing_from_seed` | discovery では見つかったが seed にない RSS |
+| `seed_not_discovered` | seed にはあるが discovery では見つからなかった RSS |
+| `dead_seed_feeds` | HTTP 200 ではない seed RSS |
+| `parse_error_seed_feeds` | XML/RSS parse に失敗した seed RSS |
+
 ### `GET /api/v2/rss/entries`
 
 郡山市公式サイト RSS の記事情報を返します。
@@ -300,11 +339,14 @@ curl "https://civic-koriyama-data.alflag.org/api/v2/changes?since=2026-06-01T00:
 | Query | 説明 |
 | --- | --- |
 | `category` | API 側で分類した RSS カテゴリで絞り込みます。 |
+| `feed_id` | RSS feed ID で絞り込みます。 |
+| `kind` | `global`、`life`、`site` のいずれかで絞り込みます。 |
+| `since` | 指定日時以降の記事だけを返します。ISO 8601 形式の文字列を指定できます。 |
 | `limit` | 取得件数。既定値は `100` です。 |
 | `offset` | 取得開始位置です。 |
 
 ```bash
-curl "https://civic-koriyama-data.alflag.org/api/v2/rss/entries?category=disaster&limit=10"
+curl "https://civic-koriyama-data.alflag.org/api/v2/rss/entries?kind=life&limit=10"
 ```
 
 主な `data[]` フィールド:
@@ -312,9 +354,12 @@ curl "https://civic-koriyama-data.alflag.org/api/v2/rss/entries?category=disaste
 | フィールド | 説明 |
 | --- | --- |
 | `id` | RSS 記事 ID |
-| `feed_id` | フィード ID |
+| `feed_id` | 代表フィード ID |
+| `feed_ids` | 記事が出現したフィード ID の配列 |
+| `feed_kinds` | 記事が出現したフィード種別の配列 |
 | `title` | 記事タイトル |
 | `link` | 記事 URL |
+| `canonical_url` | 重複排除に使う正規化 URL |
 | `published_at` | 公開日時。RSS にない場合は `null` |
 | `fetched_at` | 取得日時 |
 | `category` | API 側のカテゴリ |

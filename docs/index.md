@@ -66,5 +66,7 @@ curl "https://civic-koriyama-data.alflag.org/api/v2/places.geojson?category=faci
 
 API リファレンス <api>
 データセット API <datasets>
+RSS 取得と監査 <rss>
 出典・ライセンス <attribution>
+運用 <operations>
 ```

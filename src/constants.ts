@@ -19,6 +19,7 @@ export function createMeta(now = new Date()): ApiMeta {
 export type JsonResponseOptions = {
   limit?: number;
   offset?: number;
+  resultCount?: number;
 };
 
 export function jsonResponse<T>(data: T, init?: ResponseInit, options: JsonResponseOptions = {}): Response {
@@ -27,6 +28,7 @@ export function jsonResponse<T>(data: T, init?: ResponseInit, options: JsonRespo
       meta: {
         ...createMeta(),
         ...(Array.isArray(data) ? { result_count: data.length } : {}),
+        ...(options.resultCount == null ? {} : { result_count: options.resultCount }),
         ...(options.limit == null ? {} : { limit: options.limit }),
         ...(options.offset == null ? {} : { offset: options.offset }),
       },

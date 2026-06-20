@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PUBLIC_API_BASE_URL } from "./constants";
-import { app, shouldIngestOpenData } from "./index";
+import { app, shouldAuditRss, shouldIngestOpenData } from "./index";
 import { API_RATE_LIMIT_REQUESTS, API_RATE_LIMIT_WINDOW_SECONDS } from "./middleware/rateLimit";
 import type { Bindings } from "./types";
 
@@ -92,5 +92,10 @@ describe("scheduled jobs", () => {
   it("runs open data ingestion at the configured UTC hour", () => {
     expect(shouldIngestOpenData(new Date("2026-05-27T18:00:00.000Z"))).toBe(true);
     expect(shouldIngestOpenData(new Date("2026-05-27T17:00:00.000Z"))).toBe(false);
+  });
+
+  it("runs RSS audit once per day at the configured UTC hour", () => {
+    expect(shouldAuditRss(new Date("2026-05-27T19:00:00.000Z"))).toBe(true);
+    expect(shouldAuditRss(new Date("2026-05-27T18:00:00.000Z"))).toBe(false);
   });
 });

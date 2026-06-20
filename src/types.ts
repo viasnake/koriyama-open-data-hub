@@ -34,6 +34,34 @@ export type RssCategory = {
   keywords: string[];
 };
 
+export type RssFeedKind = "global" | "life" | "site" | "organization" | "unknown";
+
+export type RssVerificationStatus = "ok" | "dead" | "parse_error" | "http_error" | "unchecked";
+
+export type RssFeedSource = "seed" | "discovered";
+
+export type RssFeed = {
+  id: string;
+  kind: RssFeedKind;
+  title: string;
+  url: string;
+  path: string;
+  source: RssFeedSource;
+  enabled: boolean;
+  verified_at: string | null;
+  verification_status: RssVerificationStatus;
+  http_status: number | null;
+  last_error: string | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  discovered_from_url: string | null;
+};
+
+export type RssFeedResponse = Pick<
+  RssFeed,
+  "id" | "kind" | "title" | "url" | "enabled" | "verification_status" | "verified_at"
+>;
+
 export type DatasetCatalog = {
   version: number;
   source: {
@@ -104,7 +132,9 @@ export type RawRecordResponse = Omit<RawRecord, "raw_json"> & {
 
 export type RssEntry = {
   id: string;
-  feed_id: string;
+  feed_id: string | null;
+  feed_ids?: string | null;
+  feed_kinds?: string | null;
   title: string;
   link: string;
   published_at: string | null;
@@ -112,10 +142,13 @@ export type RssEntry = {
   category: string | null;
   tags_json: string;
   source_hash: string;
+  canonical_url: string | null;
 };
 
-export type RssEntryResponse = Omit<RssEntry, "tags_json"> & {
+export type RssEntryResponse = Omit<RssEntry, "tags_json" | "feed_ids" | "feed_kinds"> & {
   tags: string[];
+  feed_ids: string[];
+  feed_kinds: RssFeedKind[];
 };
 
 export type RecordChange = {
