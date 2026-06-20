@@ -106,7 +106,7 @@ API は、同一クライアント IP アドレスからのリクエストを 60
 | `GET` | `/api/v2/search?q=` | 地点データ検索 |
 | `GET` | `/api/v2/changes` | 取得・正規化時に検出した変更履歴 |
 | `GET` | `/api/v2/rss/feeds` | 検証済み RSS feed 一覧 |
-| `GET` | `/api/v2/rss/audit` | RSS 監査レポート |
+| `GET` | `/api/v2/rss/audit` | RSS feed 確認レポート |
 | `GET` | `/api/v2/rss/entries` | 郡山市公式サイト RSS の記事情報 |
 
 ## サービス情報
@@ -313,7 +313,7 @@ curl "https://civic-koriyama-data.alflag.org/api/v2/rss/feeds?kind=life"
 
 ### `GET /api/v2/rss/audit`
 
-RSS の最新監査レポートを返します。これは運用確認用のエンドポイントです。
+RSS feed の最新確認レポートを返します。取得対象 feed の検証状況や、公式サイト上で見つかった feed との差分を確認できます。
 
 ```bash
 curl https://civic-koriyama-data.alflag.org/api/v2/rss/audit
