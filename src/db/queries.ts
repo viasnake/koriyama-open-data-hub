@@ -9,6 +9,7 @@ import {
 import type { DatasetCatalogItem, FetchLog, Place, RawRecord, RssEntry, RssFeed, RssFeedKind } from "../types";
 
 const RSS_SEED_SYNC_CHUNK_SIZE = 50;
+const RSS_ENTRY_IDENTITY_LOOKUP_CHUNK_SIZE = 50;
 
 type DatasetRow = Omit<DatasetCatalogItem, "enabled" | "public_api" | "source_type" | "format" | "normalize_as"> & {
   source_page: string;
@@ -420,8 +421,15 @@ export type RssEntryUpsert = {
   canonicalUrl: string | null;
 };
 
+type RssEntryIdentityRow = {
+  id: string;
+  source_hash: string;
+  canonical_url: string | null;
+};
+
 export async function upsertRssEntries(db: D1Database, entries: RssEntryUpsert[]): Promise<void> {
   if (entries.length === 0) return;
+  const resolvedEntries = resolveRssEntryUpsertIds(entries, await findExistingRssEntryIdentities(db, entries));
 
   const entryStatement = db.prepare(
     `insert into rss_entries (
@@ -460,7 +468,7 @@ export async function upsertRssEntries(db: D1Database, entries: RssEntryUpsert[]
 
   await runStatementBatches(
     db,
-    entries.flatMap((entry) => [
+    resolvedEntries.flatMap((entry) => [
       entryStatement.bind(
         entry.id,
         entry.feedId,
@@ -476,6 +484,60 @@ export async function upsertRssEntries(db: D1Database, entries: RssEntryUpsert[]
       entryFeedStatement.bind(entry.id, entry.feedId, entry.fetchedAt, entry.fetchedAt),
     ]),
   );
+}
+
+export function resolveRssEntryUpsertIds(entries: RssEntryUpsert[], existingRows: RssEntryIdentityRow[]): RssEntryUpsert[] {
+  const idsBySourceHash = new Map<string, string>();
+  const idsByCanonicalUrl = new Map<string, string>();
+
+  for (const row of existingRows) {
+    idsBySourceHash.set(row.source_hash, row.id);
+    if (row.canonical_url) {
+      idsByCanonicalUrl.set(row.canonical_url, row.id);
+    }
+  }
+
+  return entries.map((entry) => {
+    const existingId = idsBySourceHash.get(entry.sourceHash) ?? (entry.canonicalUrl ? idsByCanonicalUrl.get(entry.canonicalUrl) : undefined);
+    const id = existingId ?? entry.id;
+
+    idsBySourceHash.set(entry.sourceHash, id);
+    if (entry.canonicalUrl) {
+      idsByCanonicalUrl.set(entry.canonicalUrl, id);
+    }
+
+    return id === entry.id ? entry : { ...entry, id };
+  });
+}
+
+async function findExistingRssEntryIdentities(db: D1Database, entries: RssEntryUpsert[]): Promise<RssEntryIdentityRow[]> {
+  const sourceHashes = unique(entries.map((entry) => entry.sourceHash));
+  const canonicalUrls = unique(entries.flatMap((entry) => (entry.canonicalUrl ? [entry.canonicalUrl] : [])));
+  const rows: RssEntryIdentityRow[] = [];
+
+  for (const chunk of chunks(sourceHashes, RSS_ENTRY_IDENTITY_LOOKUP_CHUNK_SIZE)) {
+    rows.push(...(await selectRssEntryIdentities(db, "source_hash", chunk)));
+  }
+
+  for (const chunk of chunks(canonicalUrls, RSS_ENTRY_IDENTITY_LOOKUP_CHUNK_SIZE)) {
+    rows.push(...(await selectRssEntryIdentities(db, "canonical_url", chunk)));
+  }
+
+  return rows;
+}
+
+async function selectRssEntryIdentities(
+  db: D1Database,
+  column: "source_hash" | "canonical_url",
+  values: string[],
+): Promise<RssEntryIdentityRow[]> {
+  if (values.length === 0) return [];
+  const placeholders = values.map(() => "?").join(", ");
+  const result = await db
+    .prepare(`select id, source_hash, canonical_url from rss_entries where ${column} in (${placeholders})`)
+    .bind(...values)
+    .all<RssEntryIdentityRow>();
+  return result.results;
 }
 
 export async function insertRssAuditReport(db: D1Database, report: RssDiscoveryReport): Promise<void> {
@@ -582,4 +644,16 @@ async function runStatementBatches(db: D1Database, statements: D1PreparedStateme
   for (let index = 0; index < statements.length; index += chunkSize) {
     await db.batch(statements.slice(index, index + chunkSize));
   }
+}
+
+function chunks<T>(items: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    result.push(items.slice(index, index + size));
+  }
+  return result;
+}
+
+function unique<T>(items: T[]): T[] {
+  return [...new Set(items)];
 }
