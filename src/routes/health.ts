@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { jsonResponse } from "../constants";
 import { countTable, listRecentFetchLogs } from "../db/queries";
-import type { Bindings } from "../types";
+import type { Bindings, FetchLog } from "../types";
 
 export const healthRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -32,7 +32,10 @@ healthRoutes.get("/", async (c) => {
     ]);
   const failedOpenDataFetches = recentOpenDataFetches.filter((log) => log.status === "error");
   const failedRssFetches = recentRssFetches.filter((log) => log.status === "error");
-  const status = failedOpenDataFetches.length > 0 || failedRssFetches.length > 0 || rawRecordsCount === 0 || placesCount === 0 ? "degraded" : "ok";
+  const status =
+    hasCurrentFetchError(recentOpenDataFetches) || hasCurrentFetchError(recentRssFetches) || rawRecordsCount === 0 || placesCount === 0
+      ? "degraded"
+      : "ok";
 
   return jsonResponse({
     status,
@@ -54,3 +57,9 @@ healthRoutes.get("/", async (c) => {
     },
   });
 });
+
+export function hasCurrentFetchError(logs: readonly Pick<FetchLog, "fetched_at" | "status">[]): boolean {
+  const latestFetchedAt = logs[0]?.fetched_at;
+  if (!latestFetchedAt) return false;
+  return logs.some((log) => log.fetched_at === latestFetchedAt && log.status === "error");
+}
