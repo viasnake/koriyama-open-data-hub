@@ -8,6 +8,8 @@ import {
 } from "../sources/rss";
 import type { DatasetCatalogItem, FetchLog, Place, RawRecord, RssEntry, RssFeed, RssFeedKind } from "../types";
 
+const RSS_SEED_SYNC_CHUNK_SIZE = 50;
+
 type DatasetRow = Omit<DatasetCatalogItem, "enabled" | "public_api" | "source_type" | "format" | "normalize_as"> & {
   source_page: string;
   source_page_url: string | null;
@@ -238,38 +240,52 @@ type RssFeedRow = Omit<RssFeed, "enabled"> & {
 };
 
 export async function syncSeedRssFeeds(db: D1Database, now = new Date().toISOString()): Promise<void> {
-  const statement = db.prepare(
-    `insert into rss_feeds (
-      id,
-      name,
-      title,
-      url,
-      path,
-      kind,
-      source,
-      enabled,
-      verification_status,
-      first_seen_at,
-      last_seen_at,
-      created_at,
-      updated_at
-    ) values (?, ?, ?, ?, ?, ?, 'seed', 0, 'unchecked', ?, ?, ?, ?)
-    on conflict(id) do update set
-      name = excluded.name,
-      title = excluded.title,
-      url = excluded.url,
-      path = excluded.path,
-      kind = excluded.kind,
-      source = 'seed',
-      last_seen_at = excluded.last_seen_at,
-      updated_at = excluded.updated_at`,
-  );
+  for (let index = 0; index < KORIYAMA_RSS_FEEDS.length; index += RSS_SEED_SYNC_CHUNK_SIZE) {
+    const feeds = KORIYAMA_RSS_FEEDS.slice(index, index + RSS_SEED_SYNC_CHUNK_SIZE);
+    const values = feeds.map(() => "(?, ?, ?, ?, ?, ?, 'seed', 0, 'unchecked', ?, ?, ?, ?)").join(", ");
+    const bindings = feeds.flatMap((feed) => [
+      feed.id,
+      feed.title,
+      feed.title,
+      rssFeedUrl(feed.path),
+      feed.path,
+      feed.kind,
+      now,
+      now,
+      now,
+      now,
+    ]);
 
-  await db.batch(
-    KORIYAMA_RSS_FEEDS.map((feed) =>
-      statement.bind(feed.id, feed.title, feed.title, rssFeedUrl(feed.path), feed.path, feed.kind, now, now, now, now),
-    ),
-  );
+    await db
+      .prepare(
+        `insert into rss_feeds (
+          id,
+          name,
+          title,
+          url,
+          path,
+          kind,
+          source,
+          enabled,
+          verification_status,
+          first_seen_at,
+          last_seen_at,
+          created_at,
+          updated_at
+        ) values ${values}
+        on conflict(id) do update set
+          name = excluded.name,
+          title = excluded.title,
+          url = excluded.url,
+          path = excluded.path,
+          kind = excluded.kind,
+          source = 'seed',
+          last_seen_at = excluded.last_seen_at,
+          updated_at = excluded.updated_at`,
+      )
+      .bind(...bindings)
+      .run();
+  }
 }
 
 export async function listRssFeeds(db: D1Database, filters: RssFeedFilters = {}): Promise<RssFeed[]> {

@@ -13,30 +13,41 @@ import {
   upsertRssEntries,
   type RssEntryUpsert,
 } from "../db/queries";
+import type { RssFeed } from "../types";
 
-export async function ingestRss(db: D1Database): Promise<void> {
-  const fetchedAt = nowIso();
+export const RSS_FEED_FETCHES_PER_INVOCATION = 40;
+
+type IngestRssOptions = {
+  maxFeeds?: number;
+  now?: string;
+  scheduledAt?: Date;
+};
+
+export async function ingestRss(db: D1Database, options: IngestRssOptions = {}): Promise<void> {
+  const fetchedAt = options.now ?? nowIso();
+  const scheduledAt = options.scheduledAt ?? new Date(fetchedAt);
   try {
     await syncSeedRssFeeds(db, fetchedAt);
     let feeds = await listRssFeeds(db);
 
     if (feeds.length === 0) {
-      const verifications = await verifySeedFeeds(undefined, fetchedAt);
-      await updateRssFeedVerifications(db, verifications);
-      feeds = await listRssFeeds(db);
+      feeds = await listRssFeeds(db, { includeUnverified: true });
     }
 
     if (feeds.length === 0) {
       throw new Error("No verified RSS feeds are enabled");
     }
 
+    const feedsToFetch = selectRssFeedsForIngestion(feeds, scheduledAt, options.maxFeeds ?? RSS_FEED_FETCHES_PER_INVOCATION);
     const upserts: RssEntryUpsert[] = [];
     const errors: string[] = [];
+    let successfulFeeds = 0;
 
-    for (const feed of feeds) {
+    for (const feed of feedsToFetch) {
       try {
         const xml = await fetchRssFeed(feed.url);
         const entries = parseRss(xml);
+        successfulFeeds += 1;
 
         upserts.push(
           ...(await Promise.all(
@@ -67,11 +78,17 @@ export async function ingestRss(db: D1Database): Promise<void> {
       }
     }
 
-    if (upserts.length === 0) {
-      throw new Error(errors.length > 0 ? `RSS fetch failed for all feeds: ${errors.join("; ")}` : "RSS feeds parsed zero entries");
+    if (successfulFeeds === 0) {
+      throw new Error(
+        errors.length > 0
+          ? `RSS fetch failed for selected feeds (${feedsToFetch.length}/${feeds.length}): ${errors.join("; ")}`
+          : "RSS feeds parsed zero entries",
+      );
     }
 
-    await upsertRssEntries(db, upserts);
+    if (upserts.length > 0) {
+      await upsertRssEntries(db, upserts);
+    }
 
     await insertFetchLog(db, {
       sourceType: "rss",
@@ -79,7 +96,7 @@ export async function ingestRss(db: D1Database): Promise<void> {
       status: errors.length > 0 ? "partial" : "ok",
       fetchedAt,
       recordsCount: upserts.length,
-      errorMessage: errors.length > 0 ? errors.join("; ") : undefined,
+      errorMessage: errors.length > 0 ? `feeds=${feedsToFetch.length}/${feeds.length}; ${errors.join("; ")}` : undefined,
     });
   } catch (error) {
     await insertFetchLog(db, {
@@ -92,6 +109,25 @@ export async function ingestRss(db: D1Database): Promise<void> {
     });
     throw error;
   }
+}
+
+export function selectRssFeedsForIngestion(
+  feeds: readonly RssFeed[],
+  scheduledAt: Date,
+  maxFeeds = RSS_FEED_FETCHES_PER_INVOCATION,
+): RssFeed[] {
+  if (maxFeeds <= 0) return [];
+  if (feeds.length <= maxFeeds) return [...feeds];
+
+  const batchCount = Math.ceil(feeds.length / maxFeeds);
+  const hourIndex = Math.floor(scheduledAt.getTime() / 3_600_000);
+  const batchIndex = positiveModulo(hourIndex, batchCount);
+  const start = batchIndex * maxFeeds;
+  return feeds.slice(start, start + maxFeeds);
+}
+
+function positiveModulo(value: number, divisor: number): number {
+  return ((value % divisor) + divisor) % divisor;
 }
 
 export async function auditRssRegistry(db: D1Database): Promise<void> {

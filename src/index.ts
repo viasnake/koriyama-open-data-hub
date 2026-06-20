@@ -92,14 +92,15 @@ async function shouldSelfHealOpenData(db: D1Database): Promise<boolean> {
 
 async function runScheduledJobs(event: ScheduledEvent, env: Bindings): Promise<void> {
   const failures: unknown[] = [];
+  const scheduledAt = new Date(event.scheduledTime);
 
   try {
-    await ingestRss(env.DB);
+    await ingestRss(env.DB, { scheduledAt });
   } catch (error) {
     failures.push(error);
   }
 
-  if (shouldAuditRss(new Date(event.scheduledTime))) {
+  if (shouldAuditRss(scheduledAt)) {
     try {
       await auditRssRegistry(env.DB);
     } catch (error) {
@@ -107,7 +108,7 @@ async function runScheduledJobs(event: ScheduledEvent, env: Bindings): Promise<v
     }
   }
 
-  if (shouldIngestOpenData(new Date(event.scheduledTime)) || (await shouldSelfHealOpenData(env.DB))) {
+  if (shouldIngestOpenData(scheduledAt) || (await shouldSelfHealOpenData(env.DB))) {
     try {
       await ingestOpenData(env.DB);
     } catch (error) {
