@@ -1,6 +1,11 @@
 name = "civic-koriyama-data"
 main = "src/index.ts"
 compatibility_date = "2026-05-25"
+workers_dev = false
+
+[[routes]]
+pattern = "civic-koriyama-data.alflag.org"
+custom_domain = true
 
 [assets]
 directory = "./public"
